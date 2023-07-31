@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}
+To-Do app
+{% endblock %}
+{% block body %}
+<div class="content container">
+<div class="page-header">
+    <nav class="navbar navbar-expand">
+        <div class="contianer justify-content-md-end">
+            <ul class="navbar-nav">
+                <a href="/add" class="btn btn-primary">Add Task</a>
+            </ul>
+        </div>
+    <div class="container justify-content-md-end">
+        <ul class= "navbar-nav">
+            <li><a href="/show/0">Show All </a></li>&nbsp;&nbsp;&nbsp;&nbsp;
+            <li><a href="/show/1">Show Completed </a></li>&nbsp;&nbsp;&nbsp;&nbsp;
+            <li><a href="/show/2">Show In-Progress </a></li>&nbsp;&nbsp;&nbsp;&nbsp;
+        </ul>
+    </div>
+</div>
+</div>
+</div>
+<table class="table">
+    <thead>
+        <td>Task No. </td>
+        <td>Task Priority </td>
+        <td>Task Name</td>
+        <td>Created On</td>
+        <td>Due</td>
+        <td>Status</td>
+        <td>Edit</td>
+        <td>Complete</td>
+        <td>Delete</td>
+    </thead>
+    <tbody>
+    {% for task in tasks %}
+
+    <tr>
+        <td scope="row">{{loop.index}}</td>
+        <td>{{task.task_no}}</td>
+        <td>{{task.task}}</td>
+        <td>{{task.created_date}}</td>
+        <td>{{task.due_date}}</td>
+        <td>{{task.status}}</td>
+        <td><a href="/edit/{{task.task_no}}" class="btn btn-primary" >Edit</a></td>
+        <td><a href="/complete/{{task.task_no}}" class="btn btn-success">Mark Complete</a></td>
+        <td><a href="/delete/{{task.task_no}}" class="btn btn-primary">Delete</a></td>
+    </tr>
+    {% endfor %}
+</tbody>
+</table>
+{% endblock %}

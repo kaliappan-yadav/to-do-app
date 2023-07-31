@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}
+Add Tasks {% endblock %}
+{% block body %}
+<script>var date = getCurrentDateAndTime();
+const dateLabel = document.getElementById("today_date");
+dateLabel.textContent = date;
+</script>
+<form  method="post">
+    <div class = "form-group mb-3">
+        <label for="task" class="form-label">Task Name : </label>
+        <input type="text" class="form-control" name="task_name" id="task_name"><br> 
+        <label for="task" class="form-label">Due Date : </label>
+        <input type="date" class="form-control" id="due_date" name="due_date"><br>
+        </div>
+        <label for="task" class="form-label">Task Status : </label>
+        <select class="form-select" aria-label="Default select example" id="status" name="status">
+            <option value="To Do">To Do</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Complete">Complete</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </div>
+    </form>
+
+
+{% endblock %}
