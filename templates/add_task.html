@@ -20,6 +20,12 @@ dateLabel.textContent = date;
             <option value="In Progress">In Progress</option>
             <option value="Complete">Complete</option>
         </select>
+        <label>Assignee ID : </label>
+        <select class="form-select" id = "assignee_id" name="assignee_id">
+        {% for assignee in assignees %}
+        <option value="{{assignee.id}}">{{assignee.user_name}}</option> 
+        {% endfor %}
+        </select>
         <button type="submit" class="btn btn-primary">Submit</button>
     </div>
     </form>

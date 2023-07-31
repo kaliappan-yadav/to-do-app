@@ -1,9 +1,35 @@
-from flask import Flask,render_template,redirect,request,render_template_string
+from flask import (
+    Flask,
+    render_template,
+    redirect,
+    flash,
+    url_for,
+    request,
+    session
+)
+from flask_bcrypt import Bcrypt,generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
-from flask_user import current_user, login_required, roles_required, UserManager, UserMixin
+from flask_login import current_user, login_required, UserMixin
 from datetime import datetime
-app = Flask(__name__)
+from forms import register_form, login_form
+from flask_login import (
+    UserMixin,
+    login_user,
+    LoginManager,
+    current_user,
+    logout_user,
+    login_required,
+) 
 
+app = Flask(__name__)
+app.secret_key = "secret-key"
+login_manager = LoginManager()
+login_manager.session_protection = "strong"
+login_manager.login_view = "login"
+login_manager.login_message_category = "info"
+login_manager.init_app(app)
+bcrypt = Bcrypt()
+bcrypt.init_app(app)
 # setting up database
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///todolist.sqlite3"
 db = SQLAlchemy()
@@ -11,133 +37,159 @@ db.init_app(app)
 
 # url_for("static")
 #Model
+
+  
+    
+class User(db.Model, UserMixin):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    password = db.Column(db.String(255), nullable=False, server_default='')
+    # User information
+    user_name = db.Column(db.String(100, collation='NOCASE'), nullable=False, server_default='')
+    role = db.Column(db.String(10))
+
+    def __repr__(self):
+        return self.user_name
+
+
+
+
 class Task(db.Model):
     task_no = db.Column(db.Integer, primary_key = True)
     task = db.Column(db.String, nullable = False)
     created_date = db.Column(db.DateTime, default=datetime.now())
     due_date = db.Column(db.DateTime)
     status = db.Column(db.String, default = "To Do", nullable=False)
+    assignee_id = db.Column(
+        db.Integer, db.ForeignKey('users.id', ondelete='CASCADE')
+    )
+    assigner_id = db.Column(
+        db.Integer, db.ForeignKey('users.id', ondelete='CASCADE')
+    )
     # task_priority = db.Column(db.Integer,)
     def __repr__(self):
         return "  |  ".join([self.task,"Due date : ", str(self.due_date),
         "Created date : ", str(self.created_date),"Status : ",self.status])+"\n"
-    
-class User(db.Model, UserMixin):
-    __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True)
-    active = db.Column('is_active', db.Boolean(), nullable=False, server_default='1')
-    # User authentication information. The collation='NOCASE' is required
-    # to search case insensitively when USER_IFIND_MODE is 'nocase_collation'.
-    email = db.Column(db.String(255, collation='NOCASE'), nullable=False, unique=True)
-    email_confirmed_at = db.Column(db.DateTime())
-    password = db.Column(db.String(255), nullable=False, server_default='')
-    # User information
-    first_name = db.Column(db.String(100, collation='NOCASE'), nullable=False, server_default='')
-    last_name = db.Column(db.String(100, collation='NOCASE'), nullable=False, server_default='')
-    # Define the relationship to Role via UserRoles
-    roles = db.relationship('Role', secondary='user_roles')
-# Define the Role data-model
-class Role(db.Model):
-    __tablename__ = 'roles'
-    id = db.Column(db.Integer(), primary_key=True)
-    name = db.Column(db.String(50), unique=True)
-# Define the UserRoles association table
-class UserRoles(db.Model):
-    __tablename__ = 'user_roles'
-    id = db.Column(db.Integer(), primary_key=True)
-    user_id = db.Column(db.Integer(), db.ForeignKey('users.id', ondelete='CASCADE'))
-    role_id = db.Column(db.Integer(), db.ForeignKey('roles.id', ondelete='CASCADE'))
-# Setup Flask-User and specify the User data-model
-user_manager = UserManager(app, db, User)
-# Create all database tables
-db.create_all()
-# Create 'member@example.com' user with no roles
-if not User.query.filter(User.email == 'member@example.com').first():
-    user = User(
-        email='member@example.com',
-        email_confirmed_at=datetime.datetime.utcnow(),
-        password=user_manager.hash_password('Password1'),
-    )
-    db.session.add(user)
-    db.session.commit()
-# Create 'admin@example.com' user with 'Admin' and 'Agent' roles
-if not User.query.filter(User.email == 'admin@example.com').first():
-    user = User(
-        email='admin@example.com',
-        email_confirmed_at=datetime.datetime.utcnow(),
-        password=user_manager.hash_password('Password1'),
-    )
-    user.roles.append(Role(name='Admin'))
-    user.roles.append(Role(name='Agent'))
-    db.session.add(user)
-    db.session.commit()
-
-@app.route('/')
-def home_page():
-    return render_template_string("""
-            {% extends "flask_user_layout.html" %}
-            {% block content %}
-                <h2>{%trans%}Home page{%endtrans%}</h2>
-                <p><a href={{ url_for('user.register') }}>{%trans%}Register{%endtrans%}</a></p>
-                <p><a href={{ url_for('user.login') }}>{%trans%}Sign in{%endtrans%}</a></p>
-                <p><a href={{ url_for('home_page') }}>{%trans%}Home Page{%endtrans%}</a> (accessible to anyone)</p>
-                <p><a href={{ url_for('member_page') }}>{%trans%}Member Page{%endtrans%}</a> (login_required: member@example.com / Password1)</p>
-                <p><a href={{ url_for('admin_page') }}>{%trans%}Admin Page{%endtrans%}</a> (role_required: admin@example.com / Password1')</p>
-                <p><a href={{ url_for('user.logout') }}>{%trans%}Sign out{%endtrans%}</a></p>
-            {% endblock %}
-            """)
-@app.route('/members')
-@login_required    # Use of @login_required decorator
-def member_page():
-    return render_template_string("""
-            {% extends "flask_user_layout.html" %}
-            {% block content %}
-                <h2>{%trans%}Members page{%endtrans%}</h2>
-                <p><a href={{ url_for('user.register') }}>{%trans%}Register{%endtrans%}</a></p>
-                <p><a href={{ url_for('user.login') }}>{%trans%}Sign in{%endtrans%}</a></p>
-                <p><a href={{ url_for('home_page') }}>{%trans%}Home Page{%endtrans%}</a> (accessible to anyone)</p>
-                <p><a href={{ url_for('member_page') }}>{%trans%}Member Page{%endtrans%}</a> (login_required: member@example.com / Password1)</p>
-                <p><a href={{ url_for('admin_page') }}>{%trans%}Admin Page{%endtrans%}</a> (role_required: admin@example.com / Password1')</p>
-                <p><a href={{ url_for('user.logout') }}>{%trans%}Sign out{%endtrans%}</a></p>
-            {% endblock %}
-            """)
-# The Admin page requires an 'Admin' role.
-@app.route('/admin')
-@roles_required('Admin')    # Use of @roles_required decorator
-def admin_page():
-        return render_template_string("""
-                {% extends "flask_user_layout.html" %}
-                {% block content %}
-                    <h2>{%trans%}Admin Page{%endtrans%}</h2>
-                    <p><a href={{ url_for('user.register') }}>{%trans%}Register{%endtrans%}</a></p>
-                    <p><a href={{ url_for('user.login') }}>{%trans%}Sign in{%endtrans%}</a></p>
-                    <p><a href={{ url_for('home_page') }}>{%trans%}Home Page{%endtrans%}</a> (accessible to anyone)</p>
-                    <p><a href={{ url_for('member_page') }}>{%trans%}Member Page{%endtrans%}</a> (login_required: member@example.com / Password1)</p>
-                    <p><a href={{ url_for('admin_page') }}>{%trans%}Admin Page{%endtrans%}</a> (role_required: admin@example.com / Password1')</p>
-                    <p><a href={{ url_for('user.logout') }}>{%trans%}Sign out{%endtrans%}</a></p>
-                {% endblock %}
-                """)
-
-
+  
 with app.app_context():
     db.create_all()
 
-@app.route("/")
-def list_tasks():
-    tasks = Task.query.all()
-    return render_template("index.html",tasks = tasks)
 
+@login_manager.user_loader
+def load_user(id):
+    return User.query.get(int(id))
+
+
+@app.route("/")
+def view_tasks():
+    if not current_user.is_authenticated:
+        return redirect("/login")
+    tasks = Task.query.filter_by(assignee_id=current_user.id)
+    if current_user.role == "Manager":
+        tasks = tasks.union(Task.query.filter_by(assigner_id=current_user.id))
+    # tasks = Task.query.filter_by(assignee_id=current_user.id)
+    users = User.query.all()
+    user_id_name_map = {}
+    for user in users:
+        user_id_name_map[user.id] = user.user_name
+        
+    return render_template("view_task.html",tasks = tasks,user=user_id_name_map)
+
+
+@app.route("/login/", methods=["GET", "POST"], strict_slashes=False)
+def login():
+    if request.method=="POST":
+        user_name = request.form['username']
+        passwd = request.form['password']
+        user = User.query.filter_by(user_name=user_name).first()
+
+        if user and user.password==passwd:
+            login_user(user)
+            return redirect(url_for('view_tasks'))
+        else:
+            flash("Invalid Username or password!", "danger")
+            return render_template("registration.html")
+    return render_template("login.html")
+    # form = login_form()
+
+    # if form.validate_on_submit():
+    #     try:
+    #         user = User.query.filter_by(email=form.email.data).first()
+    #         if check_password_hash(user.pwd, form.pwd.data):
+    #             login_user(user)
+    #             return redirect(url_for('index'))
+    #         else:
+    #             flash("Invalid Username or password!", "danger")
+    #     except Exception as e:
+    #         flash(e, "danger")
+
+    # return render_template("auth.html",
+    #     form=form,
+    #     text="Login",
+    #     title="Login",
+    #     btn_action="Login"
+    #     )
+
+
+
+# Register route
+@app.route("/register/", methods=("GET", "POST"), strict_slashes=False)
+def register():
+    if request.method=="POST":
+        user_name = request.form["username"]
+        passwd = request.form["password"]
+        role = request.form["role"]
+        # if not user_name or not passwd:
+        #     return render_template(url_for("register"))
+        newuser = User(
+                user_name=user_name,
+                password=passwd,
+                role = role
+            )
+        db.session.add(newuser)
+        db.session.commit()
+        flash(f"Account Succesfully created", "success")
+        return redirect(url_for("login"))
+        
+        
+    return render_template("registration.html")
+    # form = register_form()
+    # if form.validate_on_submit():
+    #     try:
+    #         email = form.email.data
+    #         pwd = form.pwd.data
+    #         username = form.username.data
+            
+    #         newuser = User(
+    #             username=username,
+    #             email=email,
+    #             pwd=bcrypt.generate_password_hash(pwd),
+    #         )
+    
+    #         db.session.add(newuser)
+    #         db.session.commit()
+    #         flash(f"Account Succesfully created", "success")
+    #         return redirect(url_for("login"))
+        
+    #     except:
+    #         return redirect(url_for('register'))
 
 @app.route("/add/", methods=["GET","POST"])
 def create_task():
+    if current_user.role!="Manager":
+        flash("Only Manager can add new tasks","danger")
+        return render_template("view_task.html")
     if request.method == "POST":
         task = Task(task = request.form["task_name"],
                     due_date = datetime.strptime(request.form["due_date"],"%Y-%m-%d"),
-                    status = request.form["status"])
+                    status = request.form["status"],
+                    assignee_id=request.form["assignee_id"],
+                    assigner_id=current_user.id)
         db.session.add(task)
         db.session.commit()
         return redirect("/")
-    return render_template("add_task.html")
+    users = User.query.all()
+    return render_template("add_task.html", assignees=users)
 
 @app.route("/edit/<int:no>",methods=["GET","POST"])
 def edit_task(no):
@@ -153,6 +205,8 @@ def edit_task(no):
 
 @app.route("/delete/<int:no>")
 def delete_task(no):
+    if current_user.role!="Manager":
+        return redirect("/")
     db.session.query(Task).filter(Task.task_no == no).delete()
     # task = Task.query.delete(no)
     db.session.commit()
@@ -162,7 +216,7 @@ def delete_task(no):
 
 @app.route("/complete/<int:no>")
 def mark_task_complete(no):
-    task = Task.query.get(no)
+    task = Task.query.get(task.no==no & task.assignee_id==)
     task.status = "Completed"
     db.session.commit()
     return redirect("/")
@@ -177,17 +231,11 @@ def filter_task(no):
         # print(tasks)
         return render_template("index.html",tasks= tasks)
     return redirect("/")
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect("/login")
+
 # app.run(debug=True)
-
-@app.route('/')
-
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    error = None
-    if request.method == 'POST':
-        if request.form['username'] != 'admin' or request.form['password'] != 'admin':
-            error = 'Invalid Credentials. Please try again.'
-        else:
-            return redirect("/")
-    return render_template('login.html', error=error)

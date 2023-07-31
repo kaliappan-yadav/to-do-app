@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}
+To-Do app
+{% endblock %}
+{% block body %}
+{% if current_user.role=="Manager" %}
+{% set is_manager=true %}
+{% endif %}
+<div class="content container">
+    <div class="page-header">
+        <nav class="navbar navbar-expand">       
+            <div class="container justify-content-md-end">
+                <ul class="navbar-nav">
+                    <li><a href="/show/0">Show All </a></li>&nbsp;&nbsp;&nbsp;&nbsp;
+                    <li><a href="/show/1">Show Completed </a></li>&nbsp;&nbsp;&nbsp;&nbsp;
+                    <li><a href="/show/2">Show In-Progress </a></li>&nbsp;&nbsp;&nbsp;&nbsp;
+                </ul>
+            </div>
+    </div>
+</div>
+</div>
+<table class="table">
+    <thead>
+        <td>Task No. </td>
+        <td>Task Priority </td>
+        <td>Task Name</td>
+        <td>Created On</td>
+        {% if is_manager %}
+        <td>Assignee</td>
+        <td>Edit</td>
+        <td>Delete</td>
+        {% else %}
+        <td>Complete</td>
+        {% endif %}
+        <td>Due</td>
+        <td>Status</td>
+    </thead>
+    <tbody>
+        {% for task in tasks %}
+
+        <tr>
+            <td scope="row">{{loop.index}}</td>
+            <td>{{task.task_no}}</td>
+            <td>{{task.task}}</td>
+            <td>{{task.created_date}}</td>
+            {% if is_manager %}
+            <td>{{user[task.assignee_id]}}</td>
+            <td><a href="/edit/{{task.task_no}}" class="btn btn-primary">Edit</a></td>
+            <td><a href="/delete/{{task.task_no}}" class="btn btn-primary">Delete</a></td>
+            {% else %}
+            <td><a href="/complete/{{task.task_no}}" class="btn btn-success">Mark Complete</a></td>
+            {% endif %}
+            <td>{{task.due_date}}</td>
+            <td>{{task.status}}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
